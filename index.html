@@ -68,7 +68,6 @@ input[type=number]{font:inherit;width:110px;padding:8px 10px;border:1px solid va
 .ng[aria-pressed=true]{background:var(--r);border-color:var(--r);color:#fff}
 .sop{display:none;border:2px solid var(--r);border-radius:10px;padding:14px;margin-top:14px}
 .sop.on{display:block}
-.sop ol{margin:6px 0 0;padding-left:20px}
 .warn{background:var(--bg);border-left:6px solid var(--o);padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:14px}
 .tl{display:grid;gap:8px}
 .st{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--bg)}
@@ -96,6 +95,8 @@ details td,details th{padding:4px 8px;font-size:13px}
 select{font:inherit;padding:8px;border:1px solid var(--ln);border-radius:6px;background:var(--sf);color:var(--tx)}
 .hide{display:none}
 .foot{color:var(--mu);font-size:12px;margin-top:20px}
+.thumb{width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--ln);cursor:pointer;margin-top:4px;margin-right:4px}
+.photo-preview-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 
 nav{position:fixed;left:0;right:0;bottom:0;z-index:10;margin:0;gap:0;background:var(--sf);border-top:1px solid var(--ln);border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);justify-content:center;overflow:visible}
 nav button{flex:1 1 0;max-width:160px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px 6px;font-size:12px;border-bottom:0;border-top:3px solid transparent;min-height:56px}
@@ -123,7 +124,7 @@ html,body{overflow-x:hidden}
 <body>
 <div class="wrap">
 <h1>설비보전 대시보드</h1>
-<p class="sub"><span class="bd n" id="sync">확인 중</span>공장장 보고 자료(2026.10.07) 기반 · 이론 체계와 실제 데이터의 연결</p>
+<p class="sub"><span class="bd n" id="sync">확인 중</span>공장장 보고 자료(2026.10.07) 기반 · 진동계(AR-63B/AS-63B 등) 및 점검 관리</p>
 <div class="goal">
 <div><b>비가동시간 50%↓</b>3년차 목표 (1년차 30%↓)</div>
 <div><b>생산성 30%↑</b>연 6.5만㎥ 생산량 목표</div>
@@ -162,6 +163,34 @@ html,body{overflow-x:hidden}
 <script>
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+// 사진 압축 헬퍼 함수 (Canvas 활용)
+function compressImage(file, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 800;
+      if (width > height) {
+        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+      } else {
+        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 // tabs
 const TABS=[["wo","점검","📋"],["his","기록","🗂️"],["pad","일일점검","✅"],["rm","로드맵","🧭"],["kpi","KPI·진동","📊"]];
 $("#tabs").innerHTML=TABS.map((t,i)=>`<button role="tab" data-t="${t[0]}" aria-selected="${i==0}"><span class="ic">${t[2]}</span>${t[1]}</button>`).join("");
@@ -230,41 +259,54 @@ function woView(){
  <div class="bar"><i style="width:${g/W.length*100}%"></i></div>
  <div class="row" style="margin-bottom:6px">${cats.map(c=>`<button class="chip" aria-pressed="${c==cat}" data-c="${c}">${c}</button>`).join("")}</div>
  ${W.map((w,i)=>({w,i})).filter(o=>cat=="전체"||o.w[0]==cat).map(({w,i})=>{const s=st[i],l=last(i);
- return `<div class="ord"><div><span class="id">${oid(i)} · ${w[0]} · ${CY[w[0]][1]}</span><br><b>${esc(w[1])}</b>${w[2]?`<span class="tag ${w[2][0]=="A"?"A":""}">${w[2]}등급</span>`:""}${l?`<br><span class="id">최근 ${l.date} ${l.who} · ${l.result}</span>`:""}</div>
+ return `<div class="ord"><div><span class="id">${oid(i)} · ${w[0]} ·${CY[w[0]][1]}</span><br><b>${esc(w[1])}</b>${w[2]?`<span class="tag ${w[2][0]=="A"?"A":""}">${w[2]}등급</span>`:""}${l?`<br><span class="id">최근 ${l.date} ${l.who} · ${l.result}</span>`:""}</div>
  <div><span class="bd ${s[1]}">${s[0]}</span><button class="chip" data-o="${i}">점검 기록</button></div></div>`}).join("")}`}
+
 function form(){const it=items(open),ng=dr.it.some(x=>x.r=="ng");
  return `<button class="chip" data-act="back">← 목록으로</button>
  <h2 style="margin-top:12px">${oid(open)} ${esc(W[open][1])}</h2><p class="sub">${W[open][0]} · ${CY[W[open][0]][1]} · 항목은 발표 기준치를 바탕으로 한 초안입니다</p>
  <div class="row"><label class="f" style="margin:0">점검일<br><input type="date" data-k="date" value="${dr.date}"></label><label class="f" style="margin:0">점검자<br><input type="text" data-k="who" value="${esc(dr.who)}" placeholder="이름"></label></div>
  ${it.map((t,k)=>{const x=dr.it[k];return `<div class="chk"><b>${esc(t.n)}</b><div class="d">기준: ${esc(t.c)}</div><div class="row" style="margin-top:8px">
  <button class="ok" data-i="${k}" data-r="ok" aria-pressed="${x.r=="ok"}">양호</button><button class="ng" data-i="${k}" data-r="ng" aria-pressed="${x.r=="ng"}">불량</button><button class="na" data-i="${k}" data-r="na" aria-pressed="${x.r=="na"}">해당없음</button>
- ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}</div></div>`}).join("")}
+ ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}</div>
+ <label class="f" style="margin-top:6px">사진 첨부 (현장 사진)
+ <input type="file" accept="image/*" capture="environment" data-img-i="${k}">
+ </label>
+ ${x.img?`<div class="photo-preview-wrap"><img src="${x.img}" class="thumb" data-rm-img="${k}" title="클릭시 삭제"></div>`:""}
+ </div>`}).join("")}
  <div class="sop ${ng?"on":""}" id="ngw"><b>불량 발견</b>: 즉시 작업중지 후 기전팀에 통보하고, 아래 조치내역을 반드시 기록하세요. 인버터 Trip은 임의로 리셋하지 않습니다.</div>
  <label class="f">비고<textarea data-k="note">${esc(dr.note)}</textarea></label>
  <label class="f">조치내역 (불량이면 필수)<textarea data-k="act">${esc(dr.act)}</textarea></label>
  <div class="err" id="err">${err}</div><button class="save" data-act="save">기록 저장</button>`}
+
 function draw(){$("#woBox").innerHTML=woView();msg="";err=""}
 function save(){const k=dr.it.filter(x=>!x.r).length,ng=dr.it.some(x=>x.r=="ng"),e=$("#err");
  const bad=!dr.who.trim()?"점검자를 입력하세요.":k?`판정하지 않은 항목이 ${k}개 있습니다.`:ng&&!dr.act.trim()?"불량 항목이 있으면 조치내역을 입력하세요.":"";
  if(bad){e.textContent=bad;return}
- if(canW===false){e.textContent="기록 권한이 없습니다. 관리자에게 기여자 권한을 요청하세요.";return}
  const it=items(open);
- recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
+ recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u,img:dr.it[j].img||""})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
  store.set("rec",recs);store.set("who",dr.who.trim());push();msg=`${oid(open)} 점검 기록을 저장했습니다 (${ng?"불량":"양호"}).`;open=null;draw();hist();scrollTo(0,0)}
+
 $("#woBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
- if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:""})),note:"",act:""};draw();scrollTo(0,0)}
+ if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:"",img:""})),note:"",act:""};draw();scrollTo(0,0)}
  else if(d.act=="back"){open=null;draw()}else if(d.act=="save")save()
- else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}};
-$("#woBox").oninput=e=>{const t=e.target,k=t.dataset.k;if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value};
+ else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}
+ else if(b.dataset.rmImg!==undefined){const idx=+b.dataset.rmImg;dr.it[idx].img="";draw()}};
+
+$("#woBox").onchange=e=>{const t=e.target,k=t.dataset.k;
+ if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value;
+ if(t.dataset.imgI!==undefined){const idx=+t.dataset.imgI;if(t.files[0]){compressImage(t.files[0],res=>{dr.it[idx].img=res;draw()})}}
+};
+
 // records
 const nm=r=>r.name||W[r.o][1];
 const LB={ok:"양호",ng:"불량",na:"해당없음"};
 function hist(){const L=recs.filter(r=>hf=="all"||(hf=="d"?r.o===-1:r.o===+hf)).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
- $("#hisBox").innerHTML=`<h2>점검 기록 관리</h2><div class="row" style="margin-bottom:8px"><select id="hf" aria-label="작업오더 필터"><option value="all">전체 기록</option><option value="d" ${hf=="d"?"selected":""}>일일 점검 기록</option>${W.map((w,i)=>`<option value="${i}" ${hf==i?"selected":""}>${oid(i)} ${esc(w[1])}</option>`).join("")}</select>
+ $("#hisBox").innerHTML=`<h2>점검 기록 관리</h2><div class="row" style="margin-bottom:8px"><select id="hf" aria-label="작업오더 필터"><option value="all">전체 기록</option><option value="d" ${hf=="d"?"selected":""}>일일 점검 기록</option>${W.map((w,i)=>`<option value="${i}" ${hf==i?"selected":""}>${oid(i)}${esc(w[1])}</option>`).join("")}</select>
  <button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><input type="file" id="imp" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
  <textarea id="pb" class="hide" aria-label="백업 글"></textarea><button class="chip hide" id="pbm" data-x="pbm" style="margin-bottom:8px">붙여넣은 내용 합치기</button>
- ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)} ${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span><button class="chip" data-del="${r.k}">삭제</button></span></div>
- <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td></tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
+ ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)}${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span><button class="chip" data-del="${r.k}">삭제</button></span></div>
+ <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td></tr>${x.img?`<tr><td colspan="3"><img src="${x.img}" class="thumb" style="width:100px;height:100px;" alt="점검 사진"></td></tr>`:""}`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
 const bk=()=>JSON.stringify(recs.map(({sy,...d})=>d));
 function mergeJ(t){try{const arr=JSON.parse(t);if(!Array.isArray(arr))throw 0;let n=0;
  arr.forEach(x=>{if(x&&x.k&&x.it&&!recs.some(y=>y.k===x.k)){recs.push({...x,sy:true});n++}});
@@ -292,6 +334,7 @@ function dl(name,text,type){const a=document.createElement("a");a.href=URL.creat
 ui();
 draw();hist();
 if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+
 // 일일 점검
 const DD=[{n:"PAD#2 겐트리크레인 (P210GC3S)",note:"10/01 사례: 과상승방지 리미트 파손. 작업 전 지상 2m에서 무부하 1회 상승 테스트, 쇳소리나 인버터 Trip이 있으면 리셋하지 말고 기전팀을 호출합니다.",it:[["과상승방지 (상부 리미트)","권상 레버를 천천히 올려 무부하 접촉 테스트. 리미트 작동 즉시 모터가 멈출 것"],["주행 모터 브레이크","전진/후진 후 정지. 쇳소리 없고 급정지 시 0.1m 이내 제동"],["주행 레일","이물질, 볼트 돌출, 단차가 없고 차륜 걸림이 없을 것"],["인버터 제어반","정상 표시등(Green). 경보(Red) 없음. 임의 Reset 금지"],["무선 리모컨","비상정지 즉시 작동, 레버가 걸림 없이 중립 복귀"]]}];
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -314,23 +357,34 @@ function dlv(){
  <p class="id">수정 내용은 이 폰에 저장됩니다. 항목 이름을 바꾸면 오늘 이미 표시한 판정은 다시 표시해야 합니다.</p>`;
  return top+(E.note?`<div class="warn">${esc(E.note)}</div>`:"")+`
  <div class="row"><b>${today}</b><label class="f" style="margin:0 0 0 8px">점검자 <input type="text" data-d="who" value="${esc(dwho)}" placeholder="이름" style="width:130px"></label><span class="id" id="dn">${n}/${E.it.length} 점검</span>${sv?`<span class="bd ${sv.result=="불량"?"r":"g"}">오늘 저장됨 (${sv.result})</span>`:""}</div>
- ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button></div></div>`).join("")}
+ ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button></div>
+ <label class="f" style="margin-top:6px">사진 첨부 (현장 사진)
+ <input type="file" accept="image/*" capture="environment" data-dimg-i="${i}">
+ </label>
+ ${M[t[0]+"_img"]?`<div class="photo-preview-wrap"><img src="${M[t[0]+"_img"]}" class="thumb" data-rm-dimg="${i}" title="클릭시 삭제"></div>`:""}
+ </div>`).join("")}
  <div class="sop ${ng?"on":""}" id="dsop"><b>불량 발견: 긴급 대응 절차</b><ol><li>즉시 작업중지 후 비상정지 체결</li><li>인버터 리셋 전에 Fault Code(OC, OL, OH) 사진 촬영</li><li>기전팀 입회 하에 조치하고 정비이력대장에 100% 기록</li></ol></div>
  <label class="f">조치내역 (불량이면 필수)<textarea data-d="act">${esc(dact)}</textarea></label>
  <div class="err" id="derr">${derr}</div><button class="save" data-d="save">오늘 점검 기록 저장</button>`}
+
 function dlr(){$("#dlBox").innerHTML=dlv();dmsg="";derr=""}
+
 $("#dlBox").oninput=e=>{const t=e.target,E=dly[de];
  if(t.dataset.d=="who")dwho=t.value;else if(t.dataset.d=="act")dact=t.value;
- else if(t.dataset.e){const k=t.dataset.e,i=+t.dataset.i;if(k=="n")E.n=t.value;else if(k=="note")E.note=t.value;else if(k=="in")E.it[i][0]=t.value;else if(k=="ic")E.it[i][1]=t.value;dsave()}};
+ else if(t.dataset.e){const k=t.dataset.e,i=+t.dataset.i;if(k=="n")E.n=t.value;else if(k=="note")E.note=t.value;else if(k=="in")E.it[i][0]=t.value;else if(k=="ic")E.it[i][1]=t.value;dsave()}
+ else if(t.dataset.dimgI!==undefined){const idx=+t.dataset.dimgI;if(t.files[0]){compressImage(t.files[0],res=>{marks[E.n]=marks[E.n]||{};marks[E.n][E.it[idx][0]+"_img"]=res;store.set(dkey,marks);dlr()})}}
+};
+
 $("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)return;const d=b.dataset.d,E=dly[de],i=+b.dataset.i;
  if(d=="m"){marks[E.n]=marks[E.n]||{};marks[E.n][E.it[i][0]]=b.dataset.r;store.set(dkey,marks);
   b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));
   const M=marks[E.n];$("#dsop").classList.toggle("on",E.it.some(t=>M[t[0]]=="ng"));$("#dn").textContent=E.it.filter(t=>M[t[0]]).length+"/"+E.it.length+" 점검";return}
+ if(d=="rmDImg"){const idx=+b.dataset.rmDImg;marks[E.n]=marks[E.n]||{};marks[E.n][E.it[idx][0]+"_img"]="";store.set(dkey,marks);dlr();return}
  if(d=="save"){const M=marks[E.n]||{},k=E.it.filter(t=>!M[t[0]]).length,ng=E.it.some(t=>M[t[0]]=="ng"),el=$("#derr");
   const bad=!dwho.trim()?"점검자를 입력하세요.":!E.it.length?"점검 항목이 없습니다.":k?`판정하지 않은 항목이 ${k}개 있습니다.`:ng&&!dact.trim()?"불량 항목이 있으면 조치내역을 입력하세요.":"";
   if(bad){el.textContent=bad;return}
   const full="[일일] "+E.n;recs=recs.filter(r=>!(r.o===-1&&r.name===full&&r.date===today));
-  recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:true,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:""})),note:"",act:dact.trim(),ts:Date.now()});
+  recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:true,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:"",img:M[t[0]+"_img"]||""})),note:"",act:dact.trim(),ts:Date.now()});
   persist();store.set("who",dwho.trim());hist();ui();dmsg=`${E.n} 오늘 점검을 기록했습니다 (${ng?"불량":"양호"}). 점검기록 탭에서 확인하세요.`;dlr();scrollTo(0,0);return}
  if(d=="sel"){de=i;darm="";dlr()}
  else if(d=="edit"){dedit=!dedit;darm="";dlr()}
@@ -340,6 +394,7 @@ $("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)r
  else if(d=="delE"){if(darm=="E"){dly.splice(de,1);de=0;darm="";dsave()}else darm="E";dlr()}
  else if(d=="reset"){if(darm=="R"){dly=clone(DD);de=0;darm="";dsave()}else darm="R";dlr()}};
 dlr();
+
 // roadmap
 const C=[["비용·리스크 편익 평가","설비등급 기준 16종 완료","완료",""],["설비 감사","수리이력 DB 928건 기반 진행 중","진행 중","p"],["고장 유형·영향 분석","재발 품목·예비품 15건 확정","완료",""],["측정 파라미터·기법 선정","CBM 측정항목 12건 확정","완료",""],["데이터 수집·분석 시스템","12월 착수 예정","예정","w"],["진단·예지 로직 (Days-to-Failure)","2027년 1분기 작성 예정","예정","w"],["보고 및 개선","주간 정례회의 연동","상시",""]];
 $("#cms").innerHTML=C.map(c=>`<div class="st"><em class="${c[3]}">${c[2]}</em><span><b>${c[0]}</b><small>${c[1]}</small></span></div>`).join("");
