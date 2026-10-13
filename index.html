@@ -59,6 +59,8 @@ input[type=number]{font:inherit;width:110px;padding:8px 10px;border:1px solid va
 .wo input{width:22px;height:22px;margin-top:2px;accent-color:var(--ac);flex:none}
 .wo.done .t{text-decoration:line-through;color:var(--mu)}
 .id{font-size:12px;color:var(--mu)}
+.thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--ln);vertical-align:middle}
+.pbtn{min-height:40px;display:inline-flex;align-items:center}
 .tag{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--ln);margin-left:4px}
 .tag.A{background:var(--r);color:#fff;border-color:var(--r)}
 .chk{padding:12px 0;border-top:1px solid var(--ln)}
@@ -252,7 +254,8 @@ function form(){const it=items(open),ng=dr.it.some(x=>x.r=="ng");
  <div class="row"><label class="f" style="margin:0">점검일<br><input type="date" data-k="date" value="${dr.date}"></label><label class="f" style="margin:0">점검자<br><input type="text" data-k="who" value="${esc(dr.who)}" placeholder="이름"></label></div>
  ${it.map((t,k)=>{const x=dr.it[k];return `<div class="chk"><b>${esc(t.n)}</b><div class="d">기준: ${esc(t.c)}</div><div class="row" style="margin-top:8px">
  <button class="ok" data-i="${k}" data-r="ok" aria-pressed="${x.r=="ok"}">양호</button><button class="ng" data-i="${k}" data-r="ng" aria-pressed="${x.r=="ng"}">불량</button><button class="na" data-i="${k}" data-r="na" aria-pressed="${x.r=="na"}">해당없음</button>
- ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}</div></div>`}).join("")}
+ ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}
+ <label class="chip pbtn">${x.img?"📷 첨부됨":"📷 사진"}<input type="file" accept="image/*" capture="environment" class="hide" data-ph="${k}"></label>${x.img?`<img class="thumb" src="${iu(x.img)}" alt="첨부 사진">`:""}</div></div>`}).join("")}
  <div class="sop ${ng?"on":""}" id="ngw"><b>불량 발견</b>: 즉시 작업중지 후 기전팀에 통보하고, 아래 조치내역을 반드시 기록하세요. 인버터 Trip은 임의로 리셋하지 않습니다.</div>
  <label class="f">비고<textarea data-k="note">${esc(dr.note)}</textarea></label>
  <label class="f">조치내역 (불량이면 필수)<textarea data-k="act">${esc(dr.act)}</textarea></label>
@@ -263,13 +266,15 @@ function save(){const k=dr.it.filter(x=>!x.r).length,ng=dr.it.some(x=>x.r=="ng")
  if(bad){e.textContent=bad;return}
  if(canW===false){e.textContent="기록 권한이 없습니다. 관리자에게 기여자 권한을 요청하세요.";return}
  const it=items(open);
- recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
+ recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u,img:dr.it[j].img||""})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
  store.set("rec",recs);store.set("who",dr.who.trim());push();msg=`${oid(open)} 점검 기록을 저장했습니다 (${ng?"불량":"양호"}).`;open=null;draw();hist();scrollTo(0,0)}
 $("#woBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
- if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:""})),note:"",act:""};draw();scrollTo(0,0)}
+ if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:"",img:""})),note:"",act:""};draw();scrollTo(0,0)}
  else if(d.act=="back"){open=null;draw()}else if(d.act=="save")save()
  else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}};
 $("#woBox").oninput=e=>{const t=e.target,k=t.dataset.k;if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value};
+$("#woBox").onchange=e=>{const t=e.target;if(t.dataset.ph===undefined||!t.files||!t.files[0])return;
+ const i=+t.dataset.ph;shrink(t.files[0],d=>{if(d){dr.it[i].img=d;draw()}})};
 // records
 const nm=r=>r.name||W[r.o][1];
 const LB={ok:"양호",ng:"불량",na:"해당없음"};
@@ -279,7 +284,7 @@ function hist(){const L=recs.filter(r=>hf=="all"||(hf=="d"?r.o===-1:r.o===+hf)).
  <button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><input type="file" id="imp" accept=".txt,.json,text/plain,application/json" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
  <textarea id="pb" class="hide" aria-label="백업 글"></textarea><button class="chip hide" id="pbm" data-x="pbm" style="margin-bottom:8px">붙여넣은 내용 합치기</button><div class="id" id="pbn" style="margin-bottom:8px"></div>
  ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)} ${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span>${!r.sy||(prof&&prof.is_admin)?`<button class="chip" data-del="${r.k}">삭제</button>`:""}</span></div>
- <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td></tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
+ <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td>${x.img?`<td><a href="${iu(x.img)}" target="_blank" rel="noopener"><img class="thumb" src="${iu(x.img)}" alt="사진"></a></td>`:"<td></td>"}</tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
 let rg="6";
 const bk=()=>JSON.stringify(recs.filter(r=>diff(today,r.date)<=+rg).map(({sy,...d})=>d));
 const KK=/KAKAOTALK/i.test(navigator.userAgent);
@@ -321,6 +326,19 @@ async function token(){if(!ses)return null;if(Date.now()<ses.exp)return ses.at;
  catch(e){if(e instanceof TypeError)return null;ses=null;store.set("ses",null);showLogin();return null}}
 async function rest(path,opt={}){const t=await token();if(!t)throw new Error("noauth");
  return fetch(SB+"/rest/v1/"+path,{...opt,headers:{apikey:SK,Authorization:"Bearer "+t,"Content-Type":"application/json",...(opt.headers||{})}})}
+const PUB=SB+"/storage/v1/object/public/photos/";
+const iu=p=>p&&p.startsWith("data:")?p:PUB+p;
+async function upImg(path,du){try{const b=await(await fetch(du)).blob(),t=await token();if(!t)return false;
+ const r=await fetch(SB+"/storage/v1/object/photos/"+path,{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+t,"Content-Type":"image/jpeg","x-upsert":"true"},body:b});return r.ok}catch(e){return false}}
+async function migRec(r){let ch=false;
+ for(let i=0;i<r.it.length;i++){const g=r.it[i].img;
+  if(g&&g.startsWith("data:")){if(await upImg("mig/"+r.k+"/"+i+".jpg",g)){r.it[i].img="mig/"+r.k+"/"+i+".jpg";ch=true}}}
+ return ch}
+function shrink(file,cb){const im=new Image(),u=URL.createObjectURL(file);
+ im.onload=()=>{try{const s=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+  c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.7))}catch(e){cb(null)}URL.revokeObjectURL(u)};
+ im.onerror=()=>URL.revokeObjectURL(u);im.src=u}
 const toRow=r=>({k:r.k,rec_date:r.date,order_idx:r.o,order_id:r.id,equip:r.o===-1?r.name:W[r.o][1],who:r.who,result:r.result,items:r.it,note:r.note||"",act:r.act||"",ts:r.ts});
 const fromRow=x=>({k:x.k,date:x.rec_date,o:x.order_idx,id:x.order_id,...(x.order_idx===-1?{name:x.equip}:{}),who:x.who,result:x.result,it:x.items,note:x.note,act:x.act,ts:Number(x.ts),cb:x.created_by,sy:true});
 function ui(){const el=$("#sync"),n=recs.filter(r=>!r.sy&&!r.bad).length,bd=recs.filter(r=>r.bad).length;let t,c;
@@ -345,6 +363,9 @@ async function sync(manual){if(syncing||!ses||!navigator.onLine){ui();return}syn
     for(const x of recs.filter(y=>!y.sy&&!y.bad)){
      const rr=await rest("check_records?on_conflict=k",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(toRow(x))});
      if(rr.ok)x.sy=true;else if(rr.status==401)break;else x.bad=true}
+    for(const y of recs.filter(z=>z.it&&z.it.some(t=>t.img&&t.img.startsWith("data:")))){
+     if(await migRec(y)){const rr=await rest("check_records?on_conflict=k",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(toRow(y))});
+      if(rr.ok){y.sy=true;persist()}}}
    }
    persist()}
  }catch(e){}
