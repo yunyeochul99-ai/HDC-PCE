@@ -61,6 +61,9 @@ input[type=number]{font:inherit;width:110px;padding:8px 10px;border:1px solid va
 .id{font-size:12px;color:var(--mu)}
 .thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--ln);vertical-align:middle}
 .pbtn{min-height:40px;display:inline-flex;align-items:center}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.phx{position:relative;display:inline-block}
+.px{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font-size:11px;line-height:1;cursor:pointer;padding:0}
 .tag{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--ln);margin-left:4px}
 .tag.A{background:var(--r);color:#fff;border-color:var(--r)}
 .chk{padding:12px 0;border-top:1px solid var(--ln)}
@@ -255,7 +258,8 @@ function form(){const it=items(open),ng=dr.it.some(x=>x.r=="ng");
  ${it.map((t,k)=>{const x=dr.it[k];return `<div class="chk"><b>${esc(t.n)}</b><div class="d">기준: ${esc(t.c)}</div><div class="row" style="margin-top:8px">
  <button class="ok" data-i="${k}" data-r="ok" aria-pressed="${x.r=="ok"}">양호</button><button class="ng" data-i="${k}" data-r="ng" aria-pressed="${x.r=="ng"}">불량</button><button class="na" data-i="${k}" data-r="na" aria-pressed="${x.r=="na"}">해당없음</button>
  ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}
- <label class="chip pbtn">${x.img?"📷 첨부됨":"📷 사진"}<input type="file" accept="image/*" capture="environment" class="hide" data-ph="${k}"></label>${x.img?`<img class="thumb" src="${iu(x.img)}" alt="첨부 사진">`:""}</div></div>`}).join("")}
+ <label class="chip pbtn">${IMGS(x).length?`📷 ${IMGS(x).length}/5 추가`:"📷 사진"}<input type="file" accept="image/*" multiple capture="environment" class="hide" data-ph="${k}"></label></div>
+ ${(IMGS(x).length?`<div class="thumbs">${IMGS(x).map((g,j)=>`<span class="phx"><img class="thumb" src="${iu(g)}" alt="첨부 사진"><button class="px" data-xph="${k} ${j}" aria-label="사진 삭제">✕</button></span>`).join("")}</div>`:"")}</div></div>`}).join("")}
  <div class="sop ${ng?"on":""}" id="ngw"><b>불량 발견</b>: 즉시 작업중지 후 기전팀에 통보하고, 아래 조치내역을 반드시 기록하세요. 인버터 Trip은 임의로 리셋하지 않습니다.</div>
  <label class="f">비고<textarea data-k="note">${esc(dr.note)}</textarea></label>
  <label class="f">조치내역 (불량이면 필수)<textarea data-k="act">${esc(dr.act)}</textarea></label>
@@ -266,25 +270,28 @@ function save(){const k=dr.it.filter(x=>!x.r).length,ng=dr.it.some(x=>x.r=="ng")
  if(bad){e.textContent=bad;return}
  if(canW===false){e.textContent="기록 권한이 없습니다. 관리자에게 기여자 권한을 요청하세요.";return}
  const it=items(open);
- recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u,img:dr.it[j].img||""})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
+ recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u,imgs:(dr.it[j].imgs||[]).slice(0,5)})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
  store.set("rec",recs);store.set("who",dr.who.trim());push();msg=`${oid(open)} 점검 기록을 저장했습니다 (${ng?"불량":"양호"}).`;open=null;draw();hist();scrollTo(0,0)}
 $("#woBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
- if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:"",img:""})),note:"",act:""};draw();scrollTo(0,0)}
+ if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:"",imgs:[]})),note:"",act:""};draw();scrollTo(0,0)}
  else if(d.act=="back"){open=null;draw()}else if(d.act=="save")save()
+ else if(d.xph!==undefined){const p=d.xph.split(" ");dr.it[+p[0]].imgs.splice(+p[1],1);draw()}
  else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}};
 $("#woBox").oninput=e=>{const t=e.target,k=t.dataset.k;if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value};
-$("#woBox").onchange=e=>{const t=e.target;if(t.dataset.ph===undefined||!t.files||!t.files[0])return;
- const i=+t.dataset.ph;shrink(t.files[0],d=>{if(d){dr.it[i].img=d;draw()}})};
+$("#woBox").onchange=e=>{const t=e.target;if(t.dataset.ph===undefined||!t.files||!t.files.length)return;
+ const i=+t.dataset.ph;dr.it[i].imgs=dr.it[i].imgs||[];
+ const fs=[...t.files].slice(0,5-dr.it[i].imgs.length);if(!fs.length){alert("항목당 사진은 최대 5장입니다.");return}
+ let n=0;fs.forEach(f=>shrink(f,d=>{if(d)dr.it[i].imgs.push(d);if(++n==fs.length)draw()}))};
 // records
 const nm=r=>r.name||W[r.o][1];
 const LB={ok:"양호",ng:"불량",na:"해당없음"};
 function hist(){const L=recs.filter(r=>hf=="all"||(hf=="d"?r.o===-1:r.o===+hf)).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
  $("#hisBox").innerHTML=`<h2>점검 기록 관리</h2><div class="row" style="margin-bottom:8px"><select id="hf" aria-label="작업오더 필터"><option value="all">전체 기록</option><option value="d" ${hf=="d"?"selected":""}>일일 점검 기록</option>${W.map((w,i)=>`<option value="${i}" ${hf==i?"selected":""}>${oid(i)} ${esc(w[1])}</option>`).join("")}</select>
  <select id="rg" aria-label="백업 범위" style="width:auto"><option value="6" ${rg=="6"?"selected":""}>백업 범위: 최근 7일</option><option value="0" ${rg=="0"?"selected":""}>백업 범위: 오늘만</option><option value="9999" ${rg=="9999"?"selected":""}>백업 범위: 전체</option></select>
- <button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><input type="file" id="imp" accept=".txt,.json,text/plain,application/json" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
+ <button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><button class="chip" data-x="phz">📷 사진 일괄 저장</button><input type="file" id="imp" accept=".txt,.json,text/plain,application/json" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
  <textarea id="pb" class="hide" aria-label="백업 글"></textarea><button class="chip hide" id="pbm" data-x="pbm" style="margin-bottom:8px">붙여넣은 내용 합치기</button><div class="id" id="pbn" style="margin-bottom:8px"></div>
  ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)} ${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span>${!r.sy||(prof&&prof.is_admin)?`<button class="chip" data-del="${r.k}">삭제</button>`:""}</span></div>
- <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td>${x.img?`<td><a href="${iu(x.img)}" target="_blank" rel="noopener"><img class="thumb" src="${iu(x.img)}" alt="사진"></a></td>`:"<td></td>"}</tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
+ <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td>${IMGS(x).length?`<td>${IMGS(x).map(g=>`<a href="${iu(g)}" target="_blank" rel="noopener"><img class="thumb" src="${iu(g)}" alt="사진"></a>`).join(" ")}</td>`:"<td></td>"}</tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
 let rg="6";
 const bk=()=>JSON.stringify(recs.filter(r=>diff(today,r.date)<=+rg).map(({sy,...d})=>d));
 const KK=/KAKAOTALK/i.test(navigator.userAgent);
@@ -299,6 +306,18 @@ $("#hisBox").onchange=e=>{if(e.target.id=="hf"){hf=e.target.value;hist()}
  if(e.target.id=="rg"){rg=e.target.value}
  if(e.target.id=="imp"&&e.target.files[0]){const r=new FileReader();r.onload=()=>mergeJ(r.result);r.readAsText(e.target.files[0])}};
 $("#hisBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ac=b.dataset.x;
+ if(ac=="phz"){(async()=>{if(KK){alert("카카오톡 안에서는 저장이 안 됩니다. Chrome 같은 기본 브라우저로 열어 주세요.");return}
+  b.disabled=true;const ob=b.textContent;b.textContent="모으는 중…";
+  try{const files=[],seen={};let fail=0;
+   for(const r of recs)for(let i=0;i<r.it.length;i++){const t=r.it[i],gs=IMGS(t);
+    for(let j=0;j<gs.length;j++){const g=gs[j];if(!g)continue;
+     try{const u=g.startsWith("data:")?g:PUB+g,bb=await(await fetch(u)).blob();
+      const base=(r.date+"_"+(r.id||"기록")+"_"+(i+1)+"-"+(j+1)).replace(/[\\/:*?"<>|]/g,"_")+".jpg";
+      seen[base]=(seen[base]||0)+1;const fin=seen[base]>1?base.replace(/\.jpg$/,"_"+seen[base]+".jpg"):base;
+      files.push({name:fin,data:new Uint8Array(await bb.arrayBuffer())})}catch(_){fail++}}}
+   if(!files.length)alert("저장할 사진이 없습니다.");
+   else{outB("점검사진-"+today+".zip",mkzip(files),"application/zip");if(fail)setTimeout(()=>alert("일부 사진 "+fail+"장을 가져오지 못했습니다."),100)}}
+  finally{b.disabled=false;b.textContent=ob}})();return}
  if(ac=="exp"){if(KK){cpBk(b,true);return}out("점검기록백업-"+today+".txt",bk(),"text/plain");return}
  if(ac=="cp"){cpBk(b);return}
  if(ac=="imp"){if(KK){alert("카카오톡 안에서는 파일 선택이 안 됩니다. '붙여넣어 가져오기'를 쓰거나 Chrome으로 열어 주세요.");return}$("#imp").click();return}
@@ -310,8 +329,8 @@ $("#hisBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const a
    rest("check_records?k=eq."+encodeURIComponent(k),{method:"DELETE"}).then(x=>{x.ok?fin():alert("삭제하지 못했습니다.")}).catch(()=>alert("삭제하지 못했습니다."))}
   else fin()}else{b.dataset.arm=1;b.textContent="한 번 더 눌러 삭제"}}
  else if(ac=="csv"){if(KK){alert("카카오톡 안에서는 CSV 저장이 안 됩니다. Chrome 같은 기본 브라우저로 열어 주세요.");return}const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-  const rows=[["점검일","작업ID","대상설비","점검자","결과","항목","판정","실측","비고","조치내역"]];
-  recs.forEach(r=>r.it.forEach(x=>rows.push([r.date,r.id,nm(r),r.who,r.result,x.n,LB[x.r],x.v?x.v+" "+x.u:"",r.note,r.act])));
+  const rows=[["점검일","작업ID","대상설비","점검자","결과","항목","판정","실측","비고","조치내역","사진수","사진URL"]];
+  recs.forEach(r=>r.it.forEach(x=>rows.push([r.date,r.id,nm(r),r.who,r.result,x.n,LB[x.r],x.v?x.v+" "+x.u:"",r.note,r.act,IMGS(x).length,IMGS(x).filter(g=>!g.startsWith("data:")).map(g=>PUB+g).join(" ")])));
   out("점검기록-"+today+".csv","\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n"),"text/csv")}};
 const canW=null;
 function persist(){store.set("rec",recs)}
@@ -331,14 +350,30 @@ const iu=p=>p&&p.startsWith("data:")?p:PUB+p;
 async function upImg(path,du){try{const b=await(await fetch(du)).blob(),t=await token();if(!t)return false;
  const r=await fetch(SB+"/storage/v1/object/photos/"+path,{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+t,"Content-Type":"image/jpeg","x-upsert":"true"},body:b});return r.ok}catch(e){return false}}
 async function migRec(r){let ch=false;
- for(let i=0;i<r.it.length;i++){const g=r.it[i].img;
-  if(g&&g.startsWith("data:")){if(await upImg("mig/"+r.k+"/"+i+".jpg",g)){r.it[i].img="mig/"+r.k+"/"+i+".jpg";ch=true}}}
+ for(let i=0;i<r.it.length;i++){const t=r.it[i];
+  if(t.img&&t.img.startsWith("data:")){if(await upImg("mig/"+r.k+"/"+i+".jpg",t.img)){t.img="mig/"+r.k+"/"+i+".jpg";ch=true}}
+  if(t.imgs)for(let j=0;j<t.imgs.length;j++){const g=t.imgs[j];
+   if(g&&g.startsWith("data:")){if(await upImg("mig/"+r.k+"/"+i+"-"+j+".jpg",g)){t.imgs[j]="mig/"+r.k+"/"+i+"-"+j+".jpg";ch=true}}}}
  return ch}
 function shrink(file,cb){const im=new Image(),u=URL.createObjectURL(file);
  im.onload=()=>{try{const s=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement("canvas");
   c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
   c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.7))}catch(e){cb(null)}URL.revokeObjectURL(u)};
  im.onerror=()=>URL.revokeObjectURL(u);im.src=u}
+const IMGS=x=>x.imgs||(x.img?[x.img]:[]);
+async function outB(name,blob,type){try{const f=new File([blob],name,{type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name=="AbortError")return}dl(name,blob,type)}
+function mkzip(fs){const T=(()=>{let c,t=[];for(let i=0;i<256;i++){c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):(c>>>1);t[i]=c>>>0}return t})();
+ const crc=d=>{let c=-1;for(let i=0;i<d.length;i++)c=T[(c^d[i])&255]^(c>>>8);return(c^-1)>>>0};
+ const w16=n=>new Uint8Array([n&255,(n>>>8)&255]),w32=n=>new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]),ec=new TextEncoder();
+ const cat=(...a)=>{let l=0;a.forEach(x=>l+=x.length);const o=new Uint8Array(l);let p=0;a.forEach(x=>{o.set(x,p);p+=x.length});return o};
+ const loc=[],cen=[];let off=0;
+ fs.forEach(f=>{const nm=ec.encode(f.name),d=f.data,c=crc(d);
+  const lh=cat(w32(0x04034b50),w16(0x0800),w16(0),w16(0),w16(0),w16(0),w32(c),w32(d.length),w32(d.length),w16(nm.length),w16(0),nm);
+  loc.push(cat(lh,d));
+  cen.push(cat(w32(0x02014b50),w16(20),w16(0x0800),w16(0),w16(0),w16(0),w16(0),w32(c),w32(d.length),w32(d.length),w16(nm.length),w16(0),w16(0),w16(0),w16(0),w32(0),w32(off),nm));
+  off+=lh.length+d.length});
+ const cd=cat(...cen);
+ return cat(...loc,cd,w32(0x06054b50),w16(0),w16(0),w16(fs.length),w16(fs.length),w32(cd.length),w32(off),w16(0))}
 const toRow=r=>({k:r.k,rec_date:r.date,order_idx:r.o,order_id:r.id,equip:r.o===-1?r.name:W[r.o][1],who:r.who,result:r.result,items:r.it,note:r.note||"",act:r.act||"",ts:r.ts});
 const fromRow=x=>({k:x.k,date:x.rec_date,o:x.order_idx,id:x.order_id,...(x.order_idx===-1?{name:x.equip}:{}),who:x.who,result:x.result,it:x.items,note:x.note,act:x.act,ts:Number(x.ts),cb:x.created_by,sy:true});
 function ui(){const el=$("#sync"),n=recs.filter(r=>!r.sy&&!r.bad).length,bd=recs.filter(r=>r.bad).length;let t,c;
@@ -408,11 +443,14 @@ const DD=[{n:"PAD#2 겐트리크레인 (P210GC3S)",note:"10/01 사례: 과상승
 const clone=o=>JSON.parse(JSON.stringify(o));
 let dly=store.get("daily",null)||clone(DD),de=0,dedit=false,dwho=store.get("who",""),dact="",dmsg="",derr="",darm="";
 const dkey="dm:"+today;let marks=store.get(dkey,{});
+const dpk="dp:"+today;let dphs=store.get(dpk,{});
+const dpsave=()=>store.set(dpk,dphs);
 const dsave=()=>store.set("daily",dly);
 function dlv(){
  if(!dly.length){dly.push({n:"새 설비",note:"",it:[["점검 항목","기준을 입력하세요"]]});de=0;dsave()}
  if(de>=dly.length)de=0;
  const E=dly[de],M=marks[E.n]||{},full="[일일] "+E.n,sv=recs.find(r=>r.o===-1&&r.name===full&&r.date===today);
+ const DP=dphs[E.n]||{},DPH=n=>DP[n]||[];
  const ng=E.it.some(t=>M[t[0]]=="ng"),n=E.it.filter(t=>M[t[0]]).length;
  const top=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">일일 점검 체크리스트</h2><button class="chip" data-d="edit" aria-pressed="${dedit}">${dedit?"수정 완료":"✏️ 항목 수정"}</button></div>
  ${dmsg?`<div class="msg">${dmsg}</div>`:""}
@@ -425,7 +463,8 @@ function dlv(){
  <p class="id">수정 내용은 이 폰에 저장됩니다. 항목 이름을 바꾸면 오늘 이미 표시한 판정은 다시 표시해야 합니다.</p>`;
  return top+(E.note?`<div class="warn">${esc(E.note)}</div>`:"")+`
  <div class="row"><b>${today}</b><label class="f" style="margin:0 0 0 8px">점검자 <input type="text" data-d="who" value="${esc(dwho)}" placeholder="이름" style="width:130px"></label><span class="id" id="dn">${n}/${E.it.length} 점검</span>${sv?`<span class="bd ${sv.result=="불량"?"r":"g"}">오늘 저장됨 (${sv.result})</span>`:""}</div>
- ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button></div></div>`).join("")}
+ ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button><label class="chip pbtn">${DPH(t[0]).length?`📷 ${DPH(t[0]).length}/5 추가`:"📷 사진"}<input type="file" accept="image/*" multiple capture="environment" class="hide" data-dph="${i}"></label></div>
+ ${(DPH(t[0]).length?`<div class="thumbs">${DPH(t[0]).map((g,j)=>`<span class="phx"><img class="thumb" src="${iu(g)}" alt="첨부 사진"><button class="px" data-xdp="${i} ${j}" aria-label="사진 삭제">✕</button></span>`).join("")}</div>`:"")}</div></div>`).join("")}
  <div class="sop ${ng?"on":""}" id="dsop"><b>불량 발견: 긴급 대응 절차</b><ol><li>즉시 작업중지 후 비상정지 체결</li><li>인버터 리셋 전에 Fault Code(OC, OL, OH) 사진 촬영</li><li>기전팀 입회 하에 조치하고 정비이력대장에 100% 기록</li></ol></div>
  <label class="f">조치내역 (불량이면 필수)<textarea data-d="act">${esc(dact)}</textarea></label>
  <div class="err" id="derr">${derr}</div><button class="save" data-d="save">오늘 점검 기록 저장</button>`}
@@ -433,7 +472,12 @@ function dlr(){$("#dlBox").innerHTML=dlv();dmsg="";derr=""}
 $("#dlBox").oninput=e=>{const t=e.target,E=dly[de];
  if(t.dataset.d=="who")dwho=t.value;else if(t.dataset.d=="act")dact=t.value;
  else if(t.dataset.e){const k=t.dataset.e,i=+t.dataset.i;if(k=="n")E.n=t.value;else if(k=="note")E.note=t.value;else if(k=="in")E.it[i][0]=t.value;else if(k=="ic")E.it[i][1]=t.value;dsave()}};
-$("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)return;const d=b.dataset.d,E=dly[de],i=+b.dataset.i;
+$("#dlBox").onchange=e=>{const t=e.target;if(t.dataset.dph===undefined||!t.files||!t.files.length)return;
+ const E=dly[de],nm2=E.it[+t.dataset.dph][0];dphs[E.n]=dphs[E.n]||{};dphs[E.n][nm2]=dphs[E.n][nm2]||[];
+ const fs=[...t.files].slice(0,5-dphs[E.n][nm2].length);if(!fs.length){alert("항목당 사진은 최대 5장입니다.");return}
+ let n=0;fs.forEach(f=>shrink(f,d=>{if(d)dphs[E.n][nm2].push(d);if(++n==fs.length){dsave();dlr()}}))};
+$("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset.d,E=dly[de],i=+b.dataset.i;
+ if(b.dataset.xdp!==undefined){const p=b.dataset.xdp.split(" "),NM=E.it[+p[0]][0];if(dphs[E.n]&&dphs[E.n][NM]){dphs[E.n][NM].splice(+p[1],1);dpsave();dlr()}return}
  if(d=="m"){marks[E.n]=marks[E.n]||{};marks[E.n][E.it[i][0]]=b.dataset.r;store.set(dkey,marks);
   b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));
   const M=marks[E.n];$("#dsop").classList.toggle("on",E.it.some(t=>M[t[0]]=="ng"));$("#dn").textContent=E.it.filter(t=>M[t[0]]).length+"/"+E.it.length+" 점검";return}
@@ -441,7 +485,7 @@ $("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)r
   const bad=!dwho.trim()?"점검자를 입력하세요.":!E.it.length?"점검 항목이 없습니다.":k?`판정하지 않은 항목이 ${k}개 있습니다.`:ng&&!dact.trim()?"불량 항목이 있으면 조치내역을 입력하세요.":"";
   if(bad){el.textContent=bad;return}
   const full="[일일] "+E.n;const old=recs.find(r=>r.o===-1&&r.name===full&&r.date===today);recs=recs.filter(r=>r!==old);
-  recs.push({k:old?old.k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:""})),note:"",act:dact.trim(),ts:Date.now()});
+  recs.push({k:old?old.k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:"",imgs:((dphs[E.n]||{})[t[0]]||[]).slice(0,5)})),note:"",act:dact.trim(),ts:Date.now()});
   persist();store.set("who",dwho.trim());hist();ui();sync();dmsg=`${E.n} 오늘 점검을 기록했습니다 (${ng?"불량":"양호"}). 점검기록 탭에서 확인하세요.`;dlr();scrollTo(0,0);return}
  if(d=="sel"){de=i;darm="";dlr()}
  else if(d=="edit"){dedit=!dedit;darm="";dlr()}
