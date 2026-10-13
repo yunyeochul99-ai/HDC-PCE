@@ -68,6 +68,7 @@ input[type=number]{font:inherit;width:110px;padding:8px 10px;border:1px solid va
 .ng[aria-pressed=true]{background:var(--r);border-color:var(--r);color:#fff}
 .sop{display:none;border:2px solid var(--r);border-radius:10px;padding:14px;margin-top:14px}
 .sop.on{display:block}
+.sop ol{margin:6px 0 0;padding-left:20px}
 .warn{background:var(--bg);border-left:6px solid var(--o);padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:14px}
 .tl{display:grid;gap:8px}
 .st{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--bg)}
@@ -95,8 +96,6 @@ details td,details th{padding:4px 8px;font-size:13px}
 select{font:inherit;padding:8px;border:1px solid var(--ln);border-radius:6px;background:var(--sf);color:var(--tx)}
 .hide{display:none}
 .foot{color:var(--mu);font-size:12px;margin-top:20px}
-.thumb{width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--ln);cursor:pointer;margin-top:4px;margin-right:4px}
-.photo-preview-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 
 nav{position:fixed;left:0;right:0;bottom:0;z-index:10;margin:0;gap:0;background:var(--sf);border-top:1px solid var(--ln);border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);justify-content:center;overflow:visible}
 nav button{flex:1 1 0;max-width:160px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px 6px;font-size:12px;border-bottom:0;border-top:3px solid transparent;min-height:56px}
@@ -119,12 +118,26 @@ input,select,textarea,input[type=number],input[type=date],input[type=text]{font-
 select{width:100%;max-width:100%;text-overflow:ellipsis}
 .wrap,.card{min-width:0;overflow-wrap:anywhere}
 html,body{overflow-x:hidden}
+input[type=password]{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--ln);border-radius:6px;background:var(--sf);color:var(--tx);max-width:100%}
+#login{position:fixed;inset:0;z-index:50;background:var(--bg);align-items:center;justify-content:center;padding:16px;overflow:auto}
+#login:not(.hide){display:flex}
 </style>
 </head>
 <body>
+<div id="login" class="hide"><div class="card" style="width:100%;max-width:400px;margin:0">
+<h2 id="lt">설비보전 로그인</h2><p class="sub" id="ls"></p>
+<label class="f" style="margin-top:0">아이디 (영문·숫자, 사번 등)<input type="text" id="lid" autocomplete="username" autocapitalize="none" autocorrect="off" style="width:100%"></label>
+<label class="f">비밀번호 (6자 이상)<input type="password" id="lpw" autocomplete="current-password" style="width:100%"></label>
+<label class="f" id="lnw">이름 (점검자로 표시됩니다)<input type="text" id="lnm" style="width:100%"></label>
+<div class="err" id="lerr"></div>
+<button class="save" id="lgo" style="width:100%">로그인</button>
+<button class="chip" id="lsw" style="margin-top:12px;width:100%">처음이신가요? 가입하기</button>
+</div></div>
 <div class="wrap">
 <h1>설비보전 대시보드</h1>
-<p class="sub"><span class="bd n" id="sync">확인 중</span>공장장 보고 자료(2026.10.07) 기반 · 진동계(AR-63B/AS-63B 등) 및 점검 관리</p>
+<p class="sub"><span class="bd n" id="sync">확인 중</span>공장장 보고 자료(2026.10.07) 기반 · 이론 체계와 실제 데이터의 연결</p>
+<div id="acct" style="margin:-6px 0 12px"></div>
+<div id="kk" class="warn hide"></div>
 <div class="goal">
 <div><b>비가동시간 50%↓</b>3년차 목표 (1년차 30%↓)</div>
 <div><b>생산성 30%↑</b>연 6.5만㎥ 생산량 목표</div>
@@ -143,7 +156,7 @@ html,body{overflow-x:hidden}
 </section>
 
 <section id="p-wo"><div class="card" id="woBox"></div></section>
-<section id="p-his" class="hide"><div class="card" id="hisBox"></div></section>
+<section id="p-his" class="hide"><div class="card" id="hisBox"></div><div id="admBox"></div></section>
 
 <section id="p-pad" class="hide"><div class="card" id="dlBox"></div><div class="card"><h2>참고: PAD#2 주간 정밀점검 기준 (매주 금요일, 기전팀)</h2><div class="tbl"><table>
 <tr><th>항목</th><th>기준</th></tr>
@@ -163,34 +176,6 @@ html,body{overflow-x:hidden}
 <script>
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-
-// 사진 압축 헬퍼 함수 (Canvas 활용)
-function compressImage(file, callback) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      const MAX_WIDTH = 800;
-      const MAX_HEIGHT = 800;
-      if (width > height) {
-        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-      } else {
-        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/jpeg', 0.7));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
 // tabs
 const TABS=[["wo","점검","📋"],["his","기록","🗂️"],["pad","일일점검","✅"],["rm","로드맵","🧭"],["kpi","KPI·진동","📊"]];
 $("#tabs").innerHTML=TABS.map((t,i)=>`<button role="tab" data-t="${t[0]}" aria-selected="${i==0}"><span class="ic">${t[2]}</span>${t[1]}</button>`).join("");
@@ -259,82 +244,144 @@ function woView(){
  <div class="bar"><i style="width:${g/W.length*100}%"></i></div>
  <div class="row" style="margin-bottom:6px">${cats.map(c=>`<button class="chip" aria-pressed="${c==cat}" data-c="${c}">${c}</button>`).join("")}</div>
  ${W.map((w,i)=>({w,i})).filter(o=>cat=="전체"||o.w[0]==cat).map(({w,i})=>{const s=st[i],l=last(i);
- return `<div class="ord"><div><span class="id">${oid(i)} · ${w[0]} ·${CY[w[0]][1]}</span><br><b>${esc(w[1])}</b>${w[2]?`<span class="tag ${w[2][0]=="A"?"A":""}">${w[2]}등급</span>`:""}${l?`<br><span class="id">최근 ${l.date} ${l.who} · ${l.result}</span>`:""}</div>
+ return `<div class="ord"><div><span class="id">${oid(i)} · ${w[0]} · ${CY[w[0]][1]}</span><br><b>${esc(w[1])}</b>${w[2]?`<span class="tag ${w[2][0]=="A"?"A":""}">${w[2]}등급</span>`:""}${l?`<br><span class="id">최근 ${l.date} ${l.who} · ${l.result}</span>`:""}</div>
  <div><span class="bd ${s[1]}">${s[0]}</span><button class="chip" data-o="${i}">점검 기록</button></div></div>`}).join("")}`}
-
 function form(){const it=items(open),ng=dr.it.some(x=>x.r=="ng");
  return `<button class="chip" data-act="back">← 목록으로</button>
  <h2 style="margin-top:12px">${oid(open)} ${esc(W[open][1])}</h2><p class="sub">${W[open][0]} · ${CY[W[open][0]][1]} · 항목은 발표 기준치를 바탕으로 한 초안입니다</p>
  <div class="row"><label class="f" style="margin:0">점검일<br><input type="date" data-k="date" value="${dr.date}"></label><label class="f" style="margin:0">점검자<br><input type="text" data-k="who" value="${esc(dr.who)}" placeholder="이름"></label></div>
  ${it.map((t,k)=>{const x=dr.it[k];return `<div class="chk"><b>${esc(t.n)}</b><div class="d">기준: ${esc(t.c)}</div><div class="row" style="margin-top:8px">
  <button class="ok" data-i="${k}" data-r="ok" aria-pressed="${x.r=="ok"}">양호</button><button class="ng" data-i="${k}" data-r="ng" aria-pressed="${x.r=="ng"}">불량</button><button class="na" data-i="${k}" data-r="na" aria-pressed="${x.r=="na"}">해당없음</button>
- ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}</div>
- <label class="f" style="margin-top:6px">사진 첨부 (현장 사진)
- <input type="file" accept="image/*" capture="environment" data-img-i="${k}">
- </label>
- ${x.img?`<div class="photo-preview-wrap"><img src="${x.img}" class="thumb" data-rm-img="${k}" title="클릭시 삭제"></div>`:""}
- </div>`}).join("")}
+ ${t.u?`<input type="number" step="any" data-k="v" data-i="${k}" value="${esc(x.v)}" placeholder="실측" aria-label="${esc(t.n)} 실측값"> ${t.u}`:""}</div></div>`}).join("")}
  <div class="sop ${ng?"on":""}" id="ngw"><b>불량 발견</b>: 즉시 작업중지 후 기전팀에 통보하고, 아래 조치내역을 반드시 기록하세요. 인버터 Trip은 임의로 리셋하지 않습니다.</div>
  <label class="f">비고<textarea data-k="note">${esc(dr.note)}</textarea></label>
  <label class="f">조치내역 (불량이면 필수)<textarea data-k="act">${esc(dr.act)}</textarea></label>
  <div class="err" id="err">${err}</div><button class="save" data-act="save">기록 저장</button>`}
-
 function draw(){$("#woBox").innerHTML=woView();msg="";err=""}
 function save(){const k=dr.it.filter(x=>!x.r).length,ng=dr.it.some(x=>x.r=="ng"),e=$("#err");
  const bad=!dr.who.trim()?"점검자를 입력하세요.":k?`판정하지 않은 항목이 ${k}개 있습니다.`:ng&&!dr.act.trim()?"불량 항목이 있으면 조치내역을 입력하세요.":"";
  if(bad){e.textContent=bad;return}
+ if(canW===false){e.textContent="기록 권한이 없습니다. 관리자에게 기여자 권한을 요청하세요.";return}
  const it=items(open);
- recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u,img:dr.it[j].img||""})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
+ recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:open,id:oid(open),date:dr.date,who:dr.who.trim(),result:ng?"불량":"양호",it:it.map((t,j)=>({n:t.n,r:dr.it[j].r,v:dr.it[j].v,u:t.u})),note:dr.note.trim(),act:dr.act.trim(),ts:Date.now()});
  store.set("rec",recs);store.set("who",dr.who.trim());push();msg=`${oid(open)} 점검 기록을 저장했습니다 (${ng?"불량":"양호"}).`;open=null;draw();hist();scrollTo(0,0)}
-
 $("#woBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
- if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:"",img:""})),note:"",act:""};draw();scrollTo(0,0)}
+ if(d.c){cat=d.c;draw()}else if(d.o){open=+d.o;dr={date:today,who:store.get("who",""),it:items(open).map(()=>({r:"",v:""})),note:"",act:""};draw();scrollTo(0,0)}
  else if(d.act=="back"){open=null;draw()}else if(d.act=="save")save()
- else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}
- else if(b.dataset.rmImg!==undefined){const idx=+b.dataset.rmImg;dr.it[idx].img="";draw()}};
-
-$("#woBox").onchange=e=>{const t=e.target,k=t.dataset.k;
- if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value;
- if(t.dataset.imgI!==undefined){const idx=+t.dataset.imgI;if(t.files[0]){compressImage(t.files[0],res=>{dr.it[idx].img=res;draw()})}}
-};
-
+ else if(d.r){dr.it[+d.i].r=d.r;b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#ngw").classList.toggle("on",dr.it.some(x=>x.r=="ng"))}};
+$("#woBox").oninput=e=>{const t=e.target,k=t.dataset.k;if(k=="v")dr.it[+t.dataset.i].v=t.value;else if(k)dr[k]=t.value};
 // records
 const nm=r=>r.name||W[r.o][1];
 const LB={ok:"양호",ng:"불량",na:"해당없음"};
 function hist(){const L=recs.filter(r=>hf=="all"||(hf=="d"?r.o===-1:r.o===+hf)).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
- $("#hisBox").innerHTML=`<h2>점검 기록 관리</h2><div class="row" style="margin-bottom:8px"><select id="hf" aria-label="작업오더 필터"><option value="all">전체 기록</option><option value="d" ${hf=="d"?"selected":""}>일일 점검 기록</option>${W.map((w,i)=>`<option value="${i}" ${hf==i?"selected":""}>${oid(i)}${esc(w[1])}</option>`).join("")}</select>
- <button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><input type="file" id="imp" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
- <textarea id="pb" class="hide" aria-label="백업 글"></textarea><button class="chip hide" id="pbm" data-x="pbm" style="margin-bottom:8px">붙여넣은 내용 합치기</button>
- ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)}${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span><button class="chip" data-del="${r.k}">삭제</button></span></div>
- <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td></tr>${x.img?`<tr><td colspan="3"><img src="${x.img}" class="thumb" style="width:100px;height:100px;" alt="점검 사진"></td></tr>`:""}`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
-const bk=()=>JSON.stringify(recs.map(({sy,...d})=>d));
-function mergeJ(t){try{const arr=JSON.parse(t);if(!Array.isArray(arr))throw 0;let n=0;
- arr.forEach(x=>{if(x&&x.k&&x.it&&!recs.some(y=>y.k===x.k)){recs.push({...x,sy:true});n++}});
+ $("#hisBox").innerHTML=`<h2>점검 기록 관리</h2><div class="row" style="margin-bottom:8px"><select id="hf" aria-label="작업오더 필터"><option value="all">전체 기록</option><option value="d" ${hf=="d"?"selected":""}>일일 점검 기록</option>${W.map((w,i)=>`<option value="${i}" ${hf==i?"selected":""}>${oid(i)} ${esc(w[1])}</option>`).join("")}</select>
+ <select id="rg" aria-label="백업 범위" style="width:auto"><option value="6" ${rg=="6"?"selected":""}>백업 범위: 최근 7일</option><option value="0" ${rg=="0"?"selected":""}>백업 범위: 오늘만</option><option value="9999" ${rg=="9999"?"selected":""}>백업 범위: 전체</option></select>
+ <button class="chip" data-x="cp">백업 글 복사</button><button class="chip" data-x="exp">백업 보내기</button><button class="chip" data-x="pst">붙여넣어 가져오기</button><button class="chip" data-x="imp">파일로 가져오기</button><button class="chip" data-x="csv">CSV 보내기</button><input type="file" id="imp" accept=".txt,.json,text/plain,application/json" class="hide"><span class="id">총 ${L.length}건 · 불량 ${L.filter(r=>r.result=="불량").length}건</span></div>
+ <textarea id="pb" class="hide" aria-label="백업 글"></textarea><button class="chip hide" id="pbm" data-x="pbm" style="margin-bottom:8px">붙여넣은 내용 합치기</button><div class="id" id="pbn" style="margin-bottom:8px"></div>
+ ${L.length?L.map(r=>`<div class="rec"><div class="row" style="justify-content:space-between"><span><b>${r.date}</b> ${esc(r.id)} ${esc(nm(r))}<br><span class="id">점검자 ${esc(r.who)}</span></span><span><span class="bd ${r.result=="불량"?"r":"g"}">${r.result}</span>${!r.sy||(prof&&prof.is_admin)?`<button class="chip" data-del="${r.k}">삭제</button>`:""}</span></div>
+ <details><summary>항목 상세${r.act?" · 조치내역":""}</summary><table style="min-width:0">${r.it.map(x=>`<tr><td>${esc(x.n)}</td><td>${LB[x.r]}</td><td>${x.v?esc(x.v)+" "+x.u:""}</td></tr>`).join("")}</table>${r.note?`<p>비고: ${esc(r.note)}</p>`:""}${r.act?`<p><b>조치내역</b>: ${esc(r.act)}</p>`:""}</details></div>`).join(""):`<p class="sub">아직 기록이 없습니다. 작업오더 점검 탭에서 첫 점검을 기록해 보세요.</p>`}`}
+let rg="6";
+const bk=()=>JSON.stringify(recs.filter(r=>diff(today,r.date)<=+rg).map(({sy,...d})=>d));
+const KK=/KAKAOTALK/i.test(navigator.userAgent);
+function cpBk(b,kk){const t=bk(),a=$("#pb");a.value=t;a.classList.remove("hide");a.select();const f=()=>{b.textContent="아래 글을 길게 눌러 복사"};$("#pbn").textContent=t.length>9000?"글이 길어 카톡에서 잘릴 수 있습니다. 백업 범위를 줄이거나 나눠서 보내세요.":"";try{navigator.clipboard.writeText(t).then(()=>{b.textContent=kk?"복사됨 · 카톡에 붙여넣기":"복사됨"},f)}catch(_){f()}}
+if(KK){const k=$("#kk");k.classList.remove("hide");k.innerHTML='<b>카카오톡 안에서 열려 있습니다.</b> 이 화면에서는 파일 저장·공유가 막혀 있습니다. <b>Chrome 같은 기본 브라우저</b>로 열어 주세요.<div class="row" style="margin-top:8px"><button class="chip" id="kko">기본 브라우저로 열기</button></div><div class="id" style="margin-top:6px">안 열리면 화면 오른쪽 아래(또는 위) ⋮ 메뉴 → "다른 브라우저로 열기"를 누르세요. 이 화면에 저장된 기록은 기본 브라우저에서 보이지 않으니, 먼저 기록 탭에서 "백업 보내기"로 글을 복사해 두세요.</div>';
+ $("#kko").onclick=()=>{location.href="kakaotalk://web/openExternal?url="+encodeURIComponent(location.href)}}
+function xj(t){const o=[];let i=0;while((i=t.indexOf("[{",i))>=0){let j=i,ok=false;while((j=t.indexOf("]",j+1))>=0){try{const a=JSON.parse(t.slice(i,j+1));o.push(...a);i=j+1;ok=true;break}catch(_){}}if(!ok)i+=2}return o}
+function mergeJ(t){try{const arr=xj(String(t));if(!arr.length)throw 0;let n=0;
+ arr.forEach(x=>{if(x&&x.k&&x.it&&!recs.some(y=>y.k===x.k)){recs.push({...x,sy:false,bad:false});n++}});
  persist();msg=`백업에서 ${n}건을 합쳤습니다 (중복 ${arr.length-n}건 제외).`;hist();draw();ui()}catch(_){alert("백업 내용을 읽을 수 없습니다. 전체를 그대로 붙여넣었는지 확인하세요.")}}
 $("#hisBox").onchange=e=>{if(e.target.id=="hf"){hf=e.target.value;hist()}
+ if(e.target.id=="rg"){rg=e.target.value}
  if(e.target.id=="imp"&&e.target.files[0]){const r=new FileReader();r.onload=()=>mergeJ(r.result);r.readAsText(e.target.files[0])}};
 $("#hisBox").onclick=e=>{const b=e.target.closest("button");if(!b)return;const ac=b.dataset.x;
- if(ac=="exp"){out("점검기록백업-"+today+".txt",bk(),"text/plain");return}
- if(ac=="cp"){const t=bk(),a=$("#pb");a.value=t;a.classList.remove("hide");a.select();
-  try{navigator.clipboard.writeText(t).then(()=>{b.textContent="복사됨"},()=>{b.textContent="아래 글을 길게 눌러 복사"})}catch(_){b.textContent="아래 글을 길게 눌러 복사"}return}
- if(ac=="imp"){$("#imp").click();return}
- if(ac=="pst"){const a=$("#pb");a.value="";a.placeholder="받은 백업 글을 여기에 붙여넣으세요";a.classList.remove("hide");$("#pbm").classList.remove("hide");a.focus();return}
+ if(ac=="exp"){if(KK){cpBk(b,true);return}out("점검기록백업-"+today+".txt",bk(),"text/plain");return}
+ if(ac=="cp"){cpBk(b);return}
+ if(ac=="imp"){if(KK){alert("카카오톡 안에서는 파일 선택이 안 됩니다. '붙여넣어 가져오기'를 쓰거나 Chrome으로 열어 주세요.");return}$("#imp").click();return}
+ if(ac=="pst"){const a=$("#pb");a.value="";a.placeholder="카톡으로 받은 백업 글을 길게 눌러 복사한 뒤, 여기를 길게 눌러 붙여넣으세요. 여러 개를 이어서 붙여넣어도 됩니다.";a.classList.remove("hide");$("#pbm").classList.remove("hide");a.focus();return}
  if(ac=="pbm"){mergeJ($("#pb").value);return}
- if(b.dataset.del){if(b.dataset.arm){recs=recs.filter(r=>r.k!==b.dataset.del);persist();hist();draw();ui()}else{b.dataset.arm=1;b.textContent="한 번 더 눌러 삭제"}}
- else if(ac=="csv"){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+ if(b.dataset.del){if(b.dataset.arm){const k=b.dataset.del,r0=recs.find(r=>r.k===k),fin=()=>{recs=recs.filter(r=>r.k!==k);persist();hist();draw();ui()};
+  if(r0&&r0.sy){if(!prof||!prof.is_admin){alert("서버에 올라간 기록은 관리자만 삭제할 수 있습니다.");return}
+   if(!navigator.onLine){alert("서버 기록 삭제는 인터넷 연결이 필요합니다.");return}
+   rest("check_records?k=eq."+encodeURIComponent(k),{method:"DELETE"}).then(x=>{x.ok?fin():alert("삭제하지 못했습니다.")}).catch(()=>alert("삭제하지 못했습니다."))}
+  else fin()}else{b.dataset.arm=1;b.textContent="한 번 더 눌러 삭제"}}
+ else if(ac=="csv"){if(KK){alert("카카오톡 안에서는 CSV 저장이 안 됩니다. Chrome 같은 기본 브라우저로 열어 주세요.");return}const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const rows=[["점검일","작업ID","대상설비","점검자","결과","항목","판정","실측","비고","조치내역"]];
   recs.forEach(r=>r.it.forEach(x=>rows.push([r.date,r.id,nm(r),r.who,r.result,x.n,LB[x.r],x.v?x.v+" "+x.u:"",r.note,r.act])));
   out("점검기록-"+today+".csv","\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n"),"text/csv")}};
 const canW=null;
 function persist(){store.set("rec",recs)}
-function ui(){$("#sync").className="bd g";$("#sync").textContent="오프라인 저장 · "+recs.length+"건"}
-function push(){ui()}
+const SB="https://mfqnaopqlerqddyomscv.supabase.co",SK="sb_publishable_ryu0ZOVxvhK-M9onVr2F1Q_AzGJ_2AM";
+const EM=id=>id.trim().toLowerCase()+"@hdc-pce.netlify.app";
+let ses=store.get("ses",null),prof=store.get("prof",null),syncing=false,sstat="",lmode="in";
+async function auth(path,body){const r=await fetch(SB+"/auth/v1/"+path,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(body)});
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.msg||j.error_description||j.message||("오류 "+r.status));return j}
+function setSes(j){ses={at:j.access_token,rt:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000-60000,uid:j.user.id,id:(j.user.email||"").split("@")[0],name:(j.user.user_metadata&&j.user.user_metadata.name)||""};store.set("ses",ses)}
+async function token(){if(!ses)return null;if(Date.now()<ses.exp)return ses.at;
+ try{const j=await auth("token?grant_type=refresh_token",{refresh_token:ses.rt});setSes(j);return ses.at}
+ catch(e){if(e instanceof TypeError)return null;ses=null;store.set("ses",null);showLogin();return null}}
+async function rest(path,opt={}){const t=await token();if(!t)throw new Error("noauth");
+ return fetch(SB+"/rest/v1/"+path,{...opt,headers:{apikey:SK,Authorization:"Bearer "+t,"Content-Type":"application/json",...(opt.headers||{})}})}
+const toRow=r=>({k:r.k,rec_date:r.date,order_idx:r.o,order_id:r.id,equip:r.o===-1?r.name:W[r.o][1],who:r.who,result:r.result,items:r.it,note:r.note||"",act:r.act||"",ts:r.ts});
+const fromRow=x=>({k:x.k,date:x.rec_date,o:x.order_idx,id:x.order_id,...(x.order_idx===-1?{name:x.equip}:{}),who:x.who,result:x.result,it:x.items,note:x.note,act:x.act,ts:Number(x.ts),cb:x.created_by,sy:true});
+function ui(){const el=$("#sync"),n=recs.filter(r=>!r.sy&&!r.bad).length,bd=recs.filter(r=>r.bad).length;let t,c;
+ if(!ses){t="로그인 필요";c="r"}else if(prof&&!prof.approved){t="관리자 승인 대기 · "+n+"건 보관";c="y"}
+ else if(!navigator.onLine){t="오프라인 · "+n+"건 대기";c="y"}else if(sstat){t=sstat;c="y"}
+ else if(bd){t="전송 실패 "+bd+"건";c="r"}else if(n){t="동기화 대기 "+n+"건";c="y"}else{t="공유 동기화됨";c="g"}
+ el.className="bd "+c;el.textContent=t;
+ $("#acct").innerHTML=ses?`<div class="row"><span class="id">${esc((prof&&prof.name)||ses.name||ses.id)}${prof&&prof.is_admin?" (관리자)":""}</span><button class="chip" id="bsync">지금 동기화</button><button class="chip" id="blo">로그아웃</button></div>${prof&&!prof.approved?'<div class="warn" style="margin-top:8px">가입이 완료되었습니다. 관리자가 승인하면 기록이 자동으로 공유됩니다. 그동안 점검 기록은 이 폰에 보관됩니다.</div>':""}`:""}
+$("#acct").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+ if(b.id=="bsync")sync(true);
+ else if(b.id=="blo"){if(b.dataset.arm){ses=null;prof=null;store.set("ses",null);store.set("prof",null);ui();showLogin()}else{b.dataset.arm=1;b.textContent=recs.some(r=>!r.sy)?"미전송 기록이 있습니다. 한 번 더 눌러 로그아웃":"한 번 더 눌러 로그아웃"}}};
+async function sync(manual){if(syncing||!ses||!navigator.onLine){ui();return}syncing=true;if(manual){sstat="동기화 중…"}ui();
+ const sig=()=>recs.length+":"+recs.filter(r=>r.sy).length+":"+recs.map(r=>r.ts).join();const before=sig();
+ try{
+  let r=await rest("profiles?select=name,approved,is_admin&id=eq."+ses.uid);
+  if(r.ok){const a=await r.json();prof=a[0]||{name:ses.name,approved:false,is_admin:false};store.set("prof",prof);if(prof.name&&!store.get("who","")){store.set("who",prof.name);dwho=prof.name}}
+  if(prof&&prof.approved){
+   r=await rest("check_records?select=*&order=ts.desc&limit=3000");
+   if(r.ok){const rows=await r.json(),m=new Map(rows.map(x=>[x.k,x]));
+    rows.forEach(x=>{const i=recs.findIndex(y=>y.k===x.k);if(i<0)recs.push(fromRow(x));else if(recs[i].sy||x.created_by!==ses.uid)recs[i]=fromRow(x)});
+    if(rows.length<3000)recs=recs.filter(y=>!y.sy||m.has(y.k));
+    for(const x of recs.filter(y=>!y.sy&&!y.bad)){
+     const rr=await rest("check_records?on_conflict=k",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(toRow(x))});
+     if(rr.ok)x.sy=true;else if(rr.status==401)break;else x.bad=true}
+   }
+   persist()}
+ }catch(e){}
+ sstat="";syncing=false;ui();hist();if(open===null&&sig()!==before)draw();admin()}
+async function admin(){const el=$("#admBox");if(!el)return;if(!(prof&&prof.is_admin)){el.innerHTML="";return}
+ try{const r=await rest("profiles?select=id,name,approved,created_at&order=created_at.desc");if(!r.ok)return;const a=await r.json(),p=a.filter(x=>!x.approved);
+  el.innerHTML=`<div class="card"><h2>관리자: 가입 승인</h2>${p.length?p.map(x=>`<div class="ord"><span><b>${esc(x.name)}</b><br><span class="id">${esc(String(x.created_at).slice(0,10))} 가입</span></span><button class="chip" data-ap="${esc(x.id)}">승인</button></div>`).join(""):'<p class="sub">승인 대기 중인 가입자가 없습니다.</p>'}<p class="id">승인된 사용자 ${a.length-p.length}명</p></div>`}catch(_){}}
+$("#admBox").onclick=async e=>{const b=e.target.closest("[data-ap]");if(!b)return;b.disabled=true;
+ try{const r=await rest("profiles?id=eq."+encodeURIComponent(b.dataset.ap),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({approved:true})});if(!r.ok)alert("승인하지 못했습니다.")}catch(_){alert("승인하지 못했습니다.")}admin()};
+function push(){ui();sync()}
+function showLogin(){$("#login").classList.remove("hide");lrender()}
+function lrender(){const up=lmode=="up";$("#lt").textContent=up?"가입하기":"설비보전 로그인";$("#ls").textContent=up?"가입 후 관리자가 승인하면 기록이 공유됩니다.":"인터넷이 연결된 곳에서 한 번만 로그인하면 됩니다.";
+ $("#lnw").classList.toggle("hide",!up);$("#lgo").textContent=up?"가입하기":"로그인";$("#lsw").textContent=up?"이미 가입했어요 (로그인)":"처음이신가요? 가입하기";$("#lpw").autocomplete=up?"new-password":"current-password";$("#lerr").textContent=""}
+$("#lsw").onclick=()=>{lmode=lmode=="in"?"up":"in";lrender()};
+const ko=m=>/Invalid login/i.test(m)?"아이디 또는 비밀번호가 맞지 않습니다.":/already registered/i.test(m)?"이미 가입된 아이디입니다. 로그인해 주세요.":/Password should/i.test(m)?"비밀번호는 6자 이상이어야 합니다.":/rate limit/i.test(m)?"잠시 후 다시 시도해 주세요.":m;
+$("#lgo").onclick=async()=>{const id=$("#lid").value.trim(),pw=$("#lpw").value,nme=$("#lnm").value.trim(),er=$("#lerr"),up=lmode=="up";
+ if(!/^[A-Za-z0-9._-]{3,30}$/.test(id)){er.textContent="아이디는 영문·숫자 3자 이상(사번 등)으로 입력하세요.";return}
+ if(pw.length<6){er.textContent="비밀번호는 6자 이상이어야 합니다.";return}
+ if(up&&!nme){er.textContent="이름을 입력하세요.";return}
+ if(!navigator.onLine){er.textContent="로그인은 인터넷이 연결된 곳에서 해야 합니다.";return}
+ $("#lgo").disabled=true;er.textContent="";
+ try{let j;
+  if(up){j=await auth("signup",{email:EM(id),password:pw,data:{name:nme}});if(!j.access_token)throw new Error("가입은 되었지만 이메일 확인 설정이 켜져 있습니다. 관리자에게 Confirm email을 꺼 달라고 요청하세요.")}
+  else j=await auth("token?grant_type=password",{email:EM(id),password:pw});
+  setSes(j);prof=null;store.set("prof",null);if(up){store.set("who",nme);dwho=nme}
+  $("#login").classList.add("hide");$("#lpw").value="";ui();sync(true)}
+ catch(e){er.textContent=e instanceof TypeError?"서버에 연결하지 못했습니다. 인터넷을 확인하세요.":ko(e.message)}
+ $("#lgo").disabled=false};
 async function out(name,text,type){try{const f=new File([text],name,{type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name=="AbortError")return}dl(name,text,type)}
 function dl(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 ui();
 draw();hist();
+ui();if(!ses)showLogin();else sync();
+addEventListener("online",()=>sync());addEventListener("offline",ui);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)sync()});
+setInterval(()=>{if(ses&&navigator.onLine)sync()},60000);
 if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
-
 // 일일 점검
 const DD=[{n:"PAD#2 겐트리크레인 (P210GC3S)",note:"10/01 사례: 과상승방지 리미트 파손. 작업 전 지상 2m에서 무부하 1회 상승 테스트, 쇳소리나 인버터 Trip이 있으면 리셋하지 말고 기전팀을 호출합니다.",it:[["과상승방지 (상부 리미트)","권상 레버를 천천히 올려 무부하 접촉 테스트. 리미트 작동 즉시 모터가 멈출 것"],["주행 모터 브레이크","전진/후진 후 정지. 쇳소리 없고 급정지 시 0.1m 이내 제동"],["주행 레일","이물질, 볼트 돌출, 단차가 없고 차륜 걸림이 없을 것"],["인버터 제어반","정상 표시등(Green). 경보(Red) 없음. 임의 Reset 금지"],["무선 리모컨","비상정지 즉시 작동, 레버가 걸림 없이 중립 복귀"]]}];
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -357,35 +404,24 @@ function dlv(){
  <p class="id">수정 내용은 이 폰에 저장됩니다. 항목 이름을 바꾸면 오늘 이미 표시한 판정은 다시 표시해야 합니다.</p>`;
  return top+(E.note?`<div class="warn">${esc(E.note)}</div>`:"")+`
  <div class="row"><b>${today}</b><label class="f" style="margin:0 0 0 8px">점검자 <input type="text" data-d="who" value="${esc(dwho)}" placeholder="이름" style="width:130px"></label><span class="id" id="dn">${n}/${E.it.length} 점검</span>${sv?`<span class="bd ${sv.result=="불량"?"r":"g"}">오늘 저장됨 (${sv.result})</span>`:""}</div>
- ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button></div>
- <label class="f" style="margin-top:6px">사진 첨부 (현장 사진)
- <input type="file" accept="image/*" capture="environment" data-dimg-i="${i}">
- </label>
- ${M[t[0]+"_img"]?`<div class="photo-preview-wrap"><img src="${M[t[0]+"_img"]}" class="thumb" data-rm-dimg="${i}" title="클릭시 삭제"></div>`:""}
- </div>`).join("")}
+ ${E.it.map((t,i)=>`<div class="chk"><b>${esc(t[0])}</b><div class="d">${esc(t[1])}</div><div class="row" style="margin-top:8px"><button class="ok" data-d="m" data-i="${i}" data-r="ok" aria-pressed="${M[t[0]]=="ok"}">양호</button><button class="ng" data-d="m" data-i="${i}" data-r="ng" aria-pressed="${M[t[0]]=="ng"}">불량</button><button class="na" data-d="m" data-i="${i}" data-r="na" aria-pressed="${M[t[0]]=="na"}">해당없음</button></div></div>`).join("")}
  <div class="sop ${ng?"on":""}" id="dsop"><b>불량 발견: 긴급 대응 절차</b><ol><li>즉시 작업중지 후 비상정지 체결</li><li>인버터 리셋 전에 Fault Code(OC, OL, OH) 사진 촬영</li><li>기전팀 입회 하에 조치하고 정비이력대장에 100% 기록</li></ol></div>
  <label class="f">조치내역 (불량이면 필수)<textarea data-d="act">${esc(dact)}</textarea></label>
  <div class="err" id="derr">${derr}</div><button class="save" data-d="save">오늘 점검 기록 저장</button>`}
-
 function dlr(){$("#dlBox").innerHTML=dlv();dmsg="";derr=""}
-
 $("#dlBox").oninput=e=>{const t=e.target,E=dly[de];
  if(t.dataset.d=="who")dwho=t.value;else if(t.dataset.d=="act")dact=t.value;
- else if(t.dataset.e){const k=t.dataset.e,i=+t.dataset.i;if(k=="n")E.n=t.value;else if(k=="note")E.note=t.value;else if(k=="in")E.it[i][0]=t.value;else if(k=="ic")E.it[i][1]=t.value;dsave()}
- else if(t.dataset.dimgI!==undefined){const idx=+t.dataset.dimgI;if(t.files[0]){compressImage(t.files[0],res=>{marks[E.n]=marks[E.n]||{};marks[E.n][E.it[idx][0]+"_img"]=res;store.set(dkey,marks);dlr()})}}
-};
-
+ else if(t.dataset.e){const k=t.dataset.e,i=+t.dataset.i;if(k=="n")E.n=t.value;else if(k=="note")E.note=t.value;else if(k=="in")E.it[i][0]=t.value;else if(k=="ic")E.it[i][1]=t.value;dsave()}};
 $("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)return;const d=b.dataset.d,E=dly[de],i=+b.dataset.i;
  if(d=="m"){marks[E.n]=marks[E.n]||{};marks[E.n][E.it[i][0]]=b.dataset.r;store.set(dkey,marks);
   b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));
   const M=marks[E.n];$("#dsop").classList.toggle("on",E.it.some(t=>M[t[0]]=="ng"));$("#dn").textContent=E.it.filter(t=>M[t[0]]).length+"/"+E.it.length+" 점검";return}
- if(d=="rmDImg"){const idx=+b.dataset.rmDImg;marks[E.n]=marks[E.n]||{};marks[E.n][E.it[idx][0]+"_img"]="";store.set(dkey,marks);dlr();return}
  if(d=="save"){const M=marks[E.n]||{},k=E.it.filter(t=>!M[t[0]]).length,ng=E.it.some(t=>M[t[0]]=="ng"),el=$("#derr");
   const bad=!dwho.trim()?"점검자를 입력하세요.":!E.it.length?"점검 항목이 없습니다.":k?`판정하지 않은 항목이 ${k}개 있습니다.`:ng&&!dact.trim()?"불량 항목이 있으면 조치내역을 입력하세요.":"";
   if(bad){el.textContent=bad;return}
-  const full="[일일] "+E.n;recs=recs.filter(r=>!(r.o===-1&&r.name===full&&r.date===today));
-  recs.push({k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:true,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:"",img:M[t[0]+"_img"]||""})),note:"",act:dact.trim(),ts:Date.now()});
-  persist();store.set("who",dwho.trim());hist();ui();dmsg=`${E.n} 오늘 점검을 기록했습니다 (${ng?"불량":"양호"}). 점검기록 탭에서 확인하세요.`;dlr();scrollTo(0,0);return}
+  const full="[일일] "+E.n;const old=recs.find(r=>r.o===-1&&r.name===full&&r.date===today);recs=recs.filter(r=>r!==old);
+  recs.push({k:old?old.k:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,6),sy:false,o:-1,name:full,id:"일일점검",date:today,who:dwho.trim(),result:ng?"불량":"양호",it:E.it.map(t=>({n:t[0],r:M[t[0]],v:"",u:""})),note:"",act:dact.trim(),ts:Date.now()});
+  persist();store.set("who",dwho.trim());hist();ui();sync();dmsg=`${E.n} 오늘 점검을 기록했습니다 (${ng?"불량":"양호"}). 점검기록 탭에서 확인하세요.`;dlr();scrollTo(0,0);return}
  if(d=="sel"){de=i;darm="";dlr()}
  else if(d=="edit"){dedit=!dedit;darm="";dlr()}
  else if(d=="addE"){dly.push({n:"새 설비",note:"",it:[["점검 항목","기준을 입력하세요"]]});de=dly.length-1;dsave();dlr()}
@@ -394,7 +430,6 @@ $("#dlBox").onclick=e=>{const b=e.target.closest("button");if(!b||!b.dataset.d)r
  else if(d=="delE"){if(darm=="E"){dly.splice(de,1);de=0;darm="";dsave()}else darm="E";dlr()}
  else if(d=="reset"){if(darm=="R"){dly=clone(DD);de=0;darm="";dsave()}else darm="R";dlr()}};
 dlr();
-
 // roadmap
 const C=[["비용·리스크 편익 평가","설비등급 기준 16종 완료","완료",""],["설비 감사","수리이력 DB 928건 기반 진행 중","진행 중","p"],["고장 유형·영향 분석","재발 품목·예비품 15건 확정","완료",""],["측정 파라미터·기법 선정","CBM 측정항목 12건 확정","완료",""],["데이터 수집·분석 시스템","12월 착수 예정","예정","w"],["진단·예지 로직 (Days-to-Failure)","2027년 1분기 작성 예정","예정","w"],["보고 및 개선","주간 정례회의 연동","상시",""]];
 $("#cms").innerHTML=C.map(c=>`<div class="st"><em class="${c[3]}">${c[2]}</em><span><b>${c[0]}</b><small>${c[1]}</small></span></div>`).join("");
