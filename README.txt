@@ -1,7 +1,7 @@
 설비보전 점검 앱 (오프라인 설치형)
 
-[구성] index.html / manifest.webmanifest / sw.js / icon-192.png / icon-512.png
-다섯 파일을 같은 폴더에 두고 함께 올려야 합니다.
+[구성] index.html / manifest.webmanifest / sw.js / icon-192.png / icon-512.png / logo.png
+여섯 파일을 같은 폴더에 두고 함께 올려야 합니다.
 
 [1] 올리기 (한 번만, HTTPS 필요)
 - 가장 쉬운 방법: Netlify Drop(app.netlify.com/drop)에 이 폴더를 끌어다 놓기
@@ -22,7 +22,7 @@
 
 [주의]
 - 기록은 각 폰에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 주기적으로 백업하세요.
-- 앱을 수정해 다시 올릴 때는 sw.js 첫 줄의 현재 버전 문자열(maint-v10)을 maint-v11으로 바꿔야 폰에 반영됩니다.
+- 앱을 수정해 다시 올릴 때는 sw.js 첫 줄의 현재 버전 문자열(maint-v12)을 maint-v13으로 바꿔야 폰에 반영됩니다.
 
 [사진 첨부]
 - 점검·일일점검 화면의 "📷 사진" 버튼으로 항목별로 사진을 여러 장(최대 5장) 첨부할 수 있습니다 (자동 압축, ✕로 개별 삭제).
