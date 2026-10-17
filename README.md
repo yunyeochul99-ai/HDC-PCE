@@ -2,7 +2,7 @@
 
 휴대폰 현장 점검과 PC 대시보드가 같은 Supabase 자료를 사용하는 React·Vite 앱입니다. 통합 대시보드, 현장 점검, 정비 작업, 설비 자산, 수선비 분석, 경영 보고와 계정 승인을 제공합니다.
 
-소스 버전은 `3.0.0`입니다. 이 README는 배포 구성을 설명하며 실제 운영 배포 여부를 증명하지 않습니다.
+소스 버전은 `3.1.0`입니다. 이 README는 배포 구성을 설명하며 실제 운영 배포 여부를 증명하지 않습니다.
 
 ## 배포 대상
 
@@ -70,3 +70,9 @@ pnpm run preview
 배포 후 PC에서 점검 1건을 저장하고 휴대폰에서 같은 기록을 확인합니다. 사진 저장·재조회, 작성자·관리자 수정, 일반 구성원의 타인 기록 수정 차단, 미승인 계정의 자료 차단을 확인합니다. 같은 기록의 오래된 버전을 저장하면 충돌을 표시하고 최신 내용을 확인해야 합니다.
 
 참고: [Supabase API 키](https://supabase.com/docs/guides/getting-started/api-keys), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Netlify Vite 배포](https://docs.netlify.com/build/frameworks/framework-setup-guides/vite/).
+
+## 설비보전 정책과 작업계획 (3.1)
+
+설비보전 절차서에서 여섯 가지 목적과 부서 정책을 확인합니다. 평일 08:00~09:30, 주말 계획 제외, 90분 초과 장기 및 100만 원 이상 고액 특별관리 기준을 반영했습니다. 보전 작업계획에서 시간·비용·영향·관리자 승인과 복구 확인을 기록합니다.
+
+새 DB를 설치할 때 supabase/schema.sql → supabase/storage.sql → supabase/maintenance.sql 순서로 적용합니다. 마지막 maintenance.sql은 새 계획 테이블과 정책·승인·완료 규칙을 적용하므로 생략하지 않습니다. 제조원가 비율은 같은 월의 실제비용 입력 상태를 확인한 뒤 사용합니다.
